@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const { app } = require('electron');
-const { ensureSitePatched } = require('./site-patcher');
 
 const SITE_URL = 'https://beta.brickcode.org';
 const GITHUB_COMMITS_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/commits/master';
@@ -77,8 +76,6 @@ function installBundledSite(onProgress) {
         version: 'v1.5.9 (базовая)',
         source: 'bundled'
       });
-
-      ensureSitePatched(SITE_DIR);
 
       if (onProgress) onProgress(100);
       resolve(true);
@@ -280,8 +277,6 @@ async function downloadUpdate(onProgress) {
       source: 'brickcode.org'
     });
   }
-
-  ensureSitePatched(SITE_DIR);
 }
 
 module.exports = {

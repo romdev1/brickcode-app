@@ -22,7 +22,7 @@
 - **Electron** — оконное приложение и оболочка.
 - **Express** — легковесный локальный HTTP-сервер для поддержки PXT SPA-архитектуры.
 - **Adm-Zip** — распаковка дистрибутивов редактора в `AppData/Roaming`.
-- **WiX Toolset + electron-builder** — генерация нативного MSI-пакета.
+- **NSIS + electron-builder** — генерация интерактивного установщика для Windows.
 
 ---
 
@@ -38,21 +38,21 @@ npm install
 npm start
 ```
 
-### Сборка установщиков
+### Сборка установщика
 ```bash
-# Через PowerShell-скрипт (собирает как Setup .exe, так и .msi)
+# Через PowerShell-скрипт (собирает Setup .exe)
 powershell -ExecutionPolicy Bypass -File build.ps1
 
 # Либо через npm
 npm run build
 ```
-Готовые установщики `.exe` (NSIS с выбором режима установки) и `.msi` появятся в папке `dist/`.
+Готовый установщик `.exe` (NSIS с выбором режима установки) появится в папке `dist/`.
 
 ---
 
 ## Авторы и благодарности
 
-- **[romdev1](https://github.com/romdev1)** — автор и разработчик приложения **BrickCode App** (настольная оболочка Electron, Bluetooth Serial интеграция для EV3, кастомное окно журнала логов, локальный сервер и MSI-пакет).
+- **[romdev1](https://github.com/romdev1)** — автор и разработчик приложения **BrickCode App** (настольная оболочка Electron, Bluetooth Serial интеграция для EV3, кастомное окно журнала логов, локальный сервер и сборка установщика).
 - **Dmitriy Antipov ([THEb0nny](https://github.com/THEb0nny))** — главный разработчик и мейнтейнер веб-платформы **[BrickCode](https://brickcode.org)** (репозиторий [pxt-ev3-community/pxt-ev3](https://github.com/pxt-ev3-community/pxt-ev3)), поддержка сенсоров NXT/EV3, симулятора и визуальных блоков.
 - **[Petteri Aimonen](https://github.com/PetteriAimonen)** — участник разработки и контрибьютор BrickCode.
 - **Сообщество [pxt-ev3-community](https://github.com/pxt-ev3-community)** — открытое сообщество энтузиастов и преподавателей, развивающее BrickCode для роботов LEGO MINDSTORMS EV3.

@@ -36,10 +36,6 @@
         {
           "target": "nsis",
           "arch": ["x64"]
-        },
-        {
-          "target": "msi",
-          "arch": ["x64"]
         }
       ],
       "icon": "assets/icon.ico",
@@ -52,13 +48,6 @@
       "perMachine": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "BrickCode App"
-    },
-    "msi": {
-      "oneClick": false,
-      "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BrickCode App"
