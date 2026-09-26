@@ -23,3 +23,6 @@ assets/icon.jpg
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Upstream fork work
+pxt-ev3/
