@@ -4,7 +4,7 @@ const AdmZip = require('adm-zip');
 
 const MAIN_TARGET = 'n.MenuDropdown=e=>{const{id:t,className:c,ariaHidden:u,ariaLabel:d,role:h,items:p,label:f,title:g,icon:m,tabIndex:b,disabled:y}=e,';
 
-const MAIN_INJECTION = `n.MenuDropdown=e=>{const{id:t,className:c,ariaHidden:u,ariaLabel:d,role:h,items:p,label:f,title:g,icon:m,tabIndex:b,disabled:y}=e;if(t==="settings-menuitem"&&p&&!p.some(x=>x&&x.label==="Логи")){p.push({role:"separator"});p.push({role:"menuitem",leftIcon:"icon terminal",label:"Логи",title:"Открыть журнал логов",onClick:()=>{try{if(window.brickcode&&window.brickcode.openLogs){window.brickcode.openLogs();}else{window.dispatchEvent(new CustomEvent("open-logs-request"));}}catch(err){window.dispatchEvent(new CustomEvent("open-logs-request"));}}});p.push({role:"menuitem",leftIcon:"icon user",label:"Приложение: romdev1",title:"GitHub: https://github.com/romdev1",onClick:()=>{try{if(window.brickcode&&window.brickcode.openExternal){window.brickcode.openExternal("https://github.com/romdev1");}else{window.dispatchEvent(new CustomEvent("open-external-request",{detail:"https://github.com/romdev1"}));}}catch(err){window.open("https://github.com/romdev1","_blank");}}});p.push({role:"menuitem",leftIcon:"icon heart",label:"Создатель BrickCode: THEB0NNY",title:"GitHub: https://github.com/THEb0nny",onClick:()=>{try{if(window.brickcode&&window.brickcode.openExternal){window.brickcode.openExternal("https://github.com/THEb0nny");}else{window.dispatchEvent(new CustomEvent("open-external-request",{detail:"https://github.com/THEb0nny"}));}}catch(err){window.open("https://github.com/THEb0nny","_blank");}}});}const `;
+const MAIN_INJECTION = `n.MenuDropdown=e=>{const{id:t,className:c,ariaHidden:u,ariaLabel:d,role:h,items:p,label:f,title:g,icon:m,tabIndex:b,disabled:y}=e;if(t==="settings-menuitem"&&p&&!p.some(x=>x&&x.label==="Логи")){p.push({role:"separator"});p.push({role:"menuitem",leftIcon:"icon microchip",label:"Диагностика EV3 (Beta)",title:"Проверка связи Bluetooth / USB и батареи",onClick:()=>{try{if(window.brickcode&&window.brickcode.openEv3Tools){window.brickcode.openEv3Tools();}else{window.dispatchEvent(new CustomEvent("open-ev3-tools-request"));}}catch(err){window.dispatchEvent(new CustomEvent("open-ev3-tools-request"));}}});p.push({role:"menuitem",leftIcon:"icon terminal",label:"Логи",title:"Открыть журнал логов",onClick:()=>{try{if(window.brickcode&&window.brickcode.openLogs){window.brickcode.openLogs();}else{window.dispatchEvent(new CustomEvent("open-logs-request"));}}catch(err){window.dispatchEvent(new CustomEvent("open-logs-request"));}}});p.push({role:"menuitem",leftIcon:"icon user",label:"Приложение: romdev1",title:"GitHub: https://github.com/romdev1",onClick:()=>{try{if(window.brickcode&&window.brickcode.openExternal){window.brickcode.openExternal("https://github.com/romdev1");}else{window.dispatchEvent(new CustomEvent("open-external-request",{detail:"https://github.com/romdev1"}));}}catch(err){window.open("https://github.com/romdev1","_blank");}}});p.push({role:"menuitem",leftIcon:"icon heart",label:"Создатель BrickCode: THEB0NNY",title:"GitHub: https://github.com/THEb0nny",onClick:()=>{try{if(window.brickcode&&window.brickcode.openExternal){window.brickcode.openExternal("https://github.com/THEb0nny");}else{window.dispatchEvent(new CustomEvent("open-external-request",{detail:"https://github.com/THEb0nny"}));}}catch(err){window.open("https://github.com/THEb0nny","_blank");}}});}const `;
 
 const LOADER_STYLES = `<style id="brickcode-ultimate-loader">
   /* BrickCode Cybernetic Dimmer */
@@ -549,8 +549,15 @@ const LOADER_HTML = `<div id='loading' class="ui active dimmer brickcode-super-d
     </div>`;
 
 function patchMainJs(content) {
-  if (content.includes('Логи') && content.includes('romdev1') && content.includes('THEB0NNY')) {
+  if (content.includes('Диагностика EV3') && content.includes('Логи') && content.includes('romdev1')) {
     return content;
+  }
+  // If has previous injection without EV3 tools
+  if (content.includes('settings-menuitem') && content.includes('Логи')) {
+    const existingInjectionRegex = /n\.MenuDropdown=e=>\{const\{id:t,className:c,ariaHidden:u,ariaLabel:d,role:h,items:p,label:f,title:g,icon:m,tabIndex:b,disabled:y\}=e;if\(t==="settings-menuitem"[\s\S]*?\}\);\}const /;
+    if (existingInjectionRegex.test(content)) {
+      return content.replace(existingInjectionRegex, MAIN_INJECTION);
+    }
   }
   if (!content.includes(MAIN_TARGET)) {
     console.warn('[SitePatcher] MAIN_TARGET not found in main.js');

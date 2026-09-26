@@ -6,6 +6,9 @@ const api = {
   openLogs: () => {
     ipcRenderer.send('open-logs-window');
   },
+  openEv3Tools: () => {
+    ipcRenderer.send('open-ev3-tools-window');
+  },
   openExternal: (url) => {
     ipcRenderer.send('open-external', url);
   }
@@ -32,6 +35,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Custom DOM event fallback
   window.addEventListener('open-logs-request', () => {
     ipcRenderer.send('open-logs-window');
+  });
+
+  window.addEventListener('open-ev3-tools-request', () => {
+    ipcRenderer.send('open-ev3-tools-window');
   });
 
   window.addEventListener('open-external-request', (e) => {
@@ -79,6 +86,13 @@ window.addEventListener('DOMContentLoaded', () => {
         sep.className = 'common-menu-dropdown-separator injected-separator';
         sep.setAttribute('role', 'separator');
         menu.appendChild(sep);
+      }
+
+      // 0. EV3 Tools (Beta)
+      if (!menu.querySelector('.injected-ev3-tools-item') && !text.includes('Диагностика EV3')) {
+        menu.appendChild(createMenuItem('injected-ev3-tools-item', 'icon microchip', 'Диагностика EV3 (Beta)', 'Проверка связи Bluetooth / USB и батареи', () => {
+          api.openEv3Tools();
+        }));
       }
 
       // 1. Logs

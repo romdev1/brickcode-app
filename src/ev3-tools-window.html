@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Диагностика и связь с EV3 [Beta] — BrickCode</title>
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-surface: #111722;
+      --bg-card: rgba(18, 24, 38, 0.85);
+      --bg-card-hover: rgba(26, 35, 54, 0.95);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-highlight: #58AB41;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-green: #58AB41;
+      --accent-green-glow: rgba(88, 171, 65, 0.35);
+      --accent-cyan: #00e5ff;
+      --accent-cyan-glow: rgba(0, 229, 255, 0.3);
+      --accent-purple: #a855f7;
+      --danger: #f85149;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172033 0%, #0a0d14 100%);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Custom Draggable Header */
+    .header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(10, 13, 20, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-app-region: drag;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #58AB41 0%, #225215 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px var(--accent-green-glow);
+    }
+
+    .header-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #ffffff;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .beta-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 2px 7px;
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      color: #c084fc;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .close-btn {
+      -webkit-app-region: no-drag;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(248, 81, 73, 0.15);
+      color: var(--danger);
+    }
+
+    /* Content Area */
+    .container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Port Selector Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .port-selector-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .port-select {
+      flex: 1;
+      background: #141c2c;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .port-select:focus {
+      border-color: var(--accent-green);
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .action-btn.primary {
+      background: linear-gradient(135deg, #58AB41 0%, #3d802b 100%);
+      border-color: rgba(88, 171, 65, 0.5);
+      box-shadow: 0 2px 10px var(--accent-green-glow);
+    }
+
+    .action-btn.primary:hover:not(:disabled) {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 14px var(--accent-green-glow);
+    }
+
+    .action-btn.cyan {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, rgba(0, 168, 187, 0.25) 100%);
+      border-color: rgba(0, 229, 255, 0.4);
+      color: #38bdf8;
+    }
+
+    .action-btn.cyan:hover:not(:disabled) {
+      background: rgba(0, 229, 255, 0.25);
+    }
+
+    /* Diagnostics Grid */
+    .diag-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .diag-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .diag-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .diag-card-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .diag-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Result Banner */
+    .result-box {
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s;
+    }
+
+    .result-box.success {
+      background: rgba(88, 171, 65, 0.12);
+      border-color: rgba(88, 171, 65, 0.35);
+      color: #4ade80;
+    }
+
+    .result-box.error {
+      background: rgba(248, 81, 73, 0.12);
+      border-color: rgba(248, 81, 73, 0.35);
+      color: #fca5a5;
+    }
+
+    /* Battery Meter */
+    .battery-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .battery-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #58AB41, #38bdf8);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    /* Bluetooth Helper Card */
+    .info-card {
+      background: rgba(14, 21, 35, 0.6);
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #94a3b8;
+    }
+
+    .info-card strong {
+      color: #e2e8f0;
+    }
+
+    .info-card ul {
+      margin-left: 18px;
+      margin-top: 6px;
+    }
+
+    .footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10, 13, 20, 0.8);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2zm-3 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-6 5v1h6v-1H9z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">
+          Диагностика связи EV3
+          <span class="beta-badge">Beta</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Прямое взаимодействие по Bluetooth SPP и USB COM</p>
+      </div>
+    </div>
+    <button class="close-btn" id="closeBtn" title="Закрыть">✕</button>
+  </div>
+
+  <div class="container">
+    <!-- Port Selection -->
+    <div class="card">
+      <div class="card-title">
+        <span>🔌 Подключение COM-порта EV3</span>
+      </div>
+      <div class="port-selector-row">
+        <select class="port-select" id="portSelect">
+          <option value="">Сканирование портов...</option>
+        </select>
+        <button class="action-btn" id="refreshBtn">🔄 Обновить</button>
+      </div>
+    </div>
+
+    <!-- Diagnostic Commands Grid -->
+    <div class="diag-grid">
+      <!-- Beep Tone Test -->
+      <div class="diag-card">
+        <div class="diag-card-header">
+          <h3>🔊 Проверка связи (Beep)</h3>
+        </div>
+        <p class="diag-desc">Отправляет прямой сигнал (1000 Гц, 250 мс) на микроконтроллер блока EV3 через протокол Direct Commands.</p>
+        <button class="action-btn primary" id="beepBtn">Отправить звуковой сигнал</button>
+        <div class="result-box" id="beepResult">Готов к отправке команды</div>
+      </div>
+
+      <!-- Battery Query Test -->
+      <div class="diag-card">
+        <div class="diag-card-header">
+          <h3>🔋 Статус аккумулятора</h3>
+        </div>
+        <p class="diag-desc">Запрашивает текущий уровень заряда батареи контроллера EV3 (команда opUI_Read GET_LBATT).</p>
+        <button class="action-btn cyan" id="battBtn">Запросить заряд батареи</button>
+        <div>
+          <div class="result-box" id="battResult">Нажмите для проверки заряда</div>
+          <div class="battery-bar-container">
+            <div class="battery-bar-fill" id="battBar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Helpful Tips for Bluetooth & USB -->
+    <div class="info-card">
+      <strong>💡 Советы по подключению по Bluetooth на Windows:</strong>
+      <ul>
+        <li>Включите Bluetooth на блоке EV3 (меню <em>Settings → Bluetooth → Visibility & Bluetooth: ON</em>).</li>
+        <li>В Windows откройте <em>«Параметры → Bluetooth и устройства → Добавить устройство»</em> (PIN-код: <code>1234</code>).</li>
+        <li>Windows назначит входящий и исходящий виртуальный COM-порт (выберите исходящий порт в списке выше).</li>
+        <li>Для гарантированной передачи файлов большого размера на соревнованиях используйте USB-кабель.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="action-btn" id="openLogsBtn" style="font-size: 12px;">📋 Открыть журнал логов</button>
+    <div style="font-size: 11px; color: var(--text-muted);">BrickCode App • Экспериментальный модуль связи</div>
+  </div>
+
+  <script>
+    const portSelect = document.getElementById('portSelect');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const beepBtn = document.getElementById('beepBtn');
+    const beepResult = document.getElementById('beepResult');
+    const battBtn = document.getElementById('battBtn');
+    const battResult = document.getElementById('battResult');
+    const battBar = document.getElementById('battBar');
+    const closeBtn = document.getElementById('closeBtn');
+    const openLogsBtn = document.getElementById('openLogsBtn');
+
+    async function refreshPorts() {
+      portSelect.innerHTML = '<option value="">Сканирование...</option>';
+      try {
+        const ports = await window.ev3tools.getPorts();
+        portSelect.innerHTML = '';
+        if (ports && ports.length > 0) {
+          ports.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = `${p} (COM-порт EV3 / Bluetooth)`;
+            portSelect.appendChild(opt);
+          });
+        } else {
+          portSelect.innerHTML = '<option value="">Устройства COM не найдены</option>';
+        }
+      } catch (err) {
+        portSelect.innerHTML = '<option value="">Ошибка сканирования портов</option>';
+      }
+    }
+
+    refreshBtn.addEventListener('click', refreshPorts);
+
+    beepBtn.addEventListener('click', async () => {
+      const port = portSelect.value;
+      if (!port) {
+        beepResult.className = 'result-box error';
+        beepResult.textContent = 'Сначала выберите COM-порт';
+        return;
+      }
+
+      beepBtn.disabled = true;
+      beepResult.className = 'result-box';
+      beepResult.textContent = `Отправка команды на ${port}...`;
+
+      try {
+        const res = await window.ev3tools.playTone(port);
+        beepResult.className = 'result-box success';
+        beepResult.textContent = '🟢 Успех! Робот воспроизвел звуковой сигнал!';
+      } catch (err) {
+        beepResult.className = 'result-box error';
+        beepResult.textContent = '⚠️ ' + (err.message || 'Ошибка связи с EV3');
+      } finally {
+        beepBtn.disabled = false;
+      }
+    });
+
+    battBtn.addEventListener('click', async () => {
+      const port = portSelect.value;
+      if (!port) {
+        battResult.className = 'result-box error';
+        battResult.textContent = 'Сначала выберите COM-порт';
+        return;
+      }
+
+      battBtn.disabled = true;
+      battResult.className = 'result-box';
+      battResult.textContent = `Запрос заряда с ${port}...`;
+
+      try {
+        const res = await window.ev3tools.readBattery(port);
+        battResult.className = 'result-box success';
+        battResult.textContent = `🟢 Заряд аккумулятора: ${res.level}%`;
+        battBar.style.width = res.level + '%';
+        if (res.level < 25) {
+          battBar.style.background = '#f85149';
+        } else if (res.level < 50) {
+          battBar.style.background = '#e3b341';
+        } else {
+          battBar.style.background = 'linear-gradient(90deg, #58AB41, #38bdf8)';
+        }
+      } catch (err) {
+        battResult.className = 'result-box error';
+        battResult.textContent = '⚠️ ' + (err.message || 'Нет ответа от батареи');
+      } finally {
+        battBtn.disabled = false;
+      }
+    });
+
+    closeBtn.addEventListener('click', () => {
+      window.ev3tools.closeWindow();
+    });
+
+    openLogsBtn.addEventListener('click', () => {
+      window.ev3tools.openLogs();
+    });
+
+    // Auto scan on load
+    refreshPorts();
+  </script>
+</body>
+</html>

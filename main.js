@@ -4,11 +4,13 @@ const fs = require('fs');
 const { startServer, stopServer } = require('./src/server');
 const { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun, installBundledSite } = require('./src/updater');
 const logger = require('./src/logger');
+const { getAvailablePorts, sendPlayTone, queryBattery } = require('./src/ev3-comm');
 
 let mainWindow;
 let splashWindow;
 let serialPickerWindow = null;
 let logsWindow = null;
+let ev3ToolsWindow = null;
 let currentSerialCallback = null;
 let currentPortList = [];
 let serverPort;
@@ -60,6 +62,37 @@ function openLogsWindow() {
   logsWindow.on('closed', () => {
     logsWindow = null;
     logger.setLogsWindow(null);
+  });
+}
+
+function openEv3ToolsWindow() {
+  if (ev3ToolsWindow && !ev3ToolsWindow.isDestroyed()) {
+    ev3ToolsWindow.focus();
+    return;
+  }
+
+  ev3ToolsWindow = new BrowserWindow({
+    width: 640,
+    height: 600,
+    minWidth: 540,
+    minHeight: 480,
+    title: 'Диагностика связи EV3 [Beta] — BrickCode App',
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    backgroundColor: '#0a0d14',
+    webPreferences: {
+      preload: path.join(__dirname, 'src', 'ev3-tools-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  ev3ToolsWindow.loadFile(path.join(__dirname, 'src', 'ev3-tools-window.html'));
+  ev3ToolsWindow.setMenuBarVisibility(false);
+
+  logger.info('APP', 'Окно диагностики связи EV3 открыто пользователем');
+
+  ev3ToolsWindow.on('closed', () => {
+    ev3ToolsWindow = null;
   });
 }
 
@@ -170,6 +203,29 @@ ipcMain.on('open-external', (event, url) => {
   if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
     shell.openExternal(url);
   }
+});
+
+// IPC handlers for EV3 Tools & Diagnostics (Beta)
+ipcMain.on('open-ev3-tools-window', () => {
+  openEv3ToolsWindow();
+});
+
+ipcMain.on('close-ev3-tools', () => {
+  if (ev3ToolsWindow && !ev3ToolsWindow.isDestroyed()) {
+    ev3ToolsWindow.close();
+  }
+});
+
+ipcMain.handle('ev3-get-ports', async () => {
+  return await getAvailablePorts();
+});
+
+ipcMain.handle('ev3-play-tone', async (event, portName) => {
+  return await sendPlayTone(portName);
+});
+
+ipcMain.handle('ev3-read-battery', async (event, portName) => {
+  return await queryBattery(portName);
 });
 
 function createMainWindow(port) {
