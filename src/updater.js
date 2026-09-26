@@ -9,7 +9,7 @@ const SITE_URL = 'https://beta.brickcode.org';
 const GITHUB_COMMITS_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/commits/master';
 const userDataPath = (app && typeof app.getPath === 'function')
   ? app.getPath('userData')
-  : path.join(process.env.APPDATA || process.env.USERPROFILE || '.', 'brickcode-offline');
+  : path.join(process.env.APPDATA || process.env.USERPROFILE || '.', 'brickcode-app');
 const DATA_DIR = path.join(userDataPath, 'brickcode-data');
 const SITE_DIR = path.join(DATA_DIR, 'site');
 const VERSION_FILE = path.join(DATA_DIR, 'version.json');
@@ -94,7 +94,7 @@ function httpsRequest(url, options = {}) {
       path: parsed.pathname + parsed.search,
       method: options.method || 'GET',
       headers: {
-        'User-Agent': 'BrickCode-Offline/1.0',
+        'User-Agent': 'BrickCode-App/1.0',
         ...(options.headers || {})
       },
       timeout: 10000

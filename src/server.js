@@ -9,7 +9,7 @@ let server = null;
 function fetchAndCache(urlPath, targetFile) {
   return new Promise((resolve, reject) => {
     const fullUrl = `${SITE_URL}${urlPath}`;
-    https.get(fullUrl, { headers: { 'User-Agent': 'BrickCode-Offline/1.0' }, timeout: 5000 }, (res) => {
+    https.get(fullUrl, { headers: { 'User-Agent': 'BrickCode-App/1.0' }, timeout: 5000 }, (res) => {
       if (res.statusCode !== 200) {
         reject(new Error(`Status ${res.statusCode}`));
         return;

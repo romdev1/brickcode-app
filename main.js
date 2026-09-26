@@ -41,7 +41,7 @@ function openLogsWindow() {
     height: 600,
     minWidth: 640,
     minHeight: 400,
-    title: 'Журнал работы и логи — BrickCode Offline',
+    title: 'Журнал работы и логи — BrickCode App',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     backgroundColor: '#0d1117',
     webPreferences: {
@@ -179,7 +179,7 @@ function createMainWindow(port) {
     minWidth: 800,
     minHeight: 600,
     show: false,
-    title: 'BrickCode Offline',
+    title: 'BrickCode App',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -243,7 +243,7 @@ function sendToSplash(channel, data) {
 
 async function launch() {
   logger.init(app.getPath('userData'));
-  logger.info('APP', `Запуск BrickCode Offline (v${app.getVersion()})`);
+  logger.info('APP', `Запуск BrickCode App (v${app.getVersion()})`);
 
   createSplashWindow();
 

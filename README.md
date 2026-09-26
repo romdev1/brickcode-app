@@ -1,6 +1,6 @@
-# BrickCode Offline 🧱
+# BrickCode App 🧱
 
-Офлайн-версия визуального редактора **BrickCode** для программирования роботов **LEGO MINDSTORMS EV3**.
+Настольное приложение визуального редактора **BrickCode** для программирования роботов **LEGO MINDSTORMS EV3**.
 
 Создана специально для использования на соревнованиях, выставках и в классах, где отсутствует постоянное подключение к интернету.
 
@@ -52,7 +52,7 @@ npm run build
 
 ## Авторы и благодарности
 
-- **[romdev1](https://github.com/romdev1)** — автор и разработчик офлайн-приложения **BrickCode Offline** (настольная оболочка Electron, Bluetooth Serial интеграция для EV3, кастомное окно журнала логов, локальный сервер и MSI-пакет).
+- **[romdev1](https://github.com/romdev1)** — автор и разработчик приложения **BrickCode App** (настольная оболочка Electron, Bluetooth Serial интеграция для EV3, кастомное окно журнала логов, локальный сервер и MSI-пакет).
 - **Dmitriy Antipov ([THEb0nny](https://github.com/THEb0nny))** — главный разработчик и мейнтейнер веб-платформы **[BrickCode](https://brickcode.org)** (репозиторий [pxt-ev3-community/pxt-ev3](https://github.com/pxt-ev3-community/pxt-ev3)), поддержка сенсоров NXT/EV3, симулятора и визуальных блоков.
 - **[Petteri Aimonen](https://github.com/PetteriAimonen)** — участник разработки и контрибьютор BrickCode.
 - **Сообщество [pxt-ev3-community](https://github.com/pxt-ev3-community)** — открытое сообщество энтузиастов и преподавателей, развивающее BrickCode для роботов LEGO MINDSTORMS EV3.

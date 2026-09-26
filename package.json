@@ -1,7 +1,7 @@
 {
-  "name": "brickcode-offline",
-  "version": "1.0.6",
-  "description": "BrickCode Offline — офлайн-версия редактора BrickCode для LEGO EV3",
+  "name": "brickcode-app",
+  "version": "1.0.0",
+  "description": "BrickCode App — приложение редактора BrickCode для LEGO EV3",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -26,8 +26,8 @@
     "semver": "^7.6.3"
   },
   "build": {
-    "appId": "org.brickcode.offline",
-    "productName": "BrickCode Offline",
+    "appId": "org.brickcode.app",
+    "productName": "BrickCode App",
     "directories": {
       "output": "dist"
     },
@@ -48,7 +48,7 @@
       "perMachine": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "BrickCode Offline"
+      "shortcutName": "BrickCode App"
     },
     "files": [
       "main.js",
