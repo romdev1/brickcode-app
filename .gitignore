@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Production builds
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Environment and temp
+.env
+*.tmp
+*.bak
+
+# Build scripts / scratch
+fix-wcs.ps1
+convert-icon.ps1
+assets/icon.jpg
+
+# OS generated
+Thumbs.db
+Desktop.ini
+.DS_Store

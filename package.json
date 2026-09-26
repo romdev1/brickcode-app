@@ -1,0 +1,55 @@
+{
+  "name": "brickcode-offline",
+  "version": "1.0.0",
+  "description": "BrickCode Offline — офлайн-версия редактора BrickCode для LEGO EV3",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win msi",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "author": "BrickCode Community",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "adm-zip": "^0.5.16",
+    "semver": "^7.6.3"
+  },
+  "build": {
+    "appId": "org.brickcode.offline",
+    "productName": "BrickCode Offline",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "msi",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signDlls": false,
+      "sign": null
+    },
+    "forceCodeSigning": false,
+    "msi": {
+      "oneClick": false,
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "BrickCode Offline"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": []
+  }
+}
