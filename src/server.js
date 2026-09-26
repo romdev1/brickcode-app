@@ -25,7 +25,9 @@ function fetchAndCache(urlPath, targetFile) {
   });
 }
 
-function startServer() {
+const FIXED_PORT = 32823;
+
+function startServer(preferredPort = FIXED_PORT) {
   return new Promise((resolve, reject) => {
     try { applyPatchesToDir(SITE_DIR); } catch (e) {}
     const app = express();
@@ -65,14 +67,25 @@ function startServer() {
       }
     });
 
-    // Listen on random available port
-    server = app.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      console.log(`BrickCode server running on http://127.0.0.1:${port}`);
-      resolve(port);
-    });
+    // Listen on fixed persistent port to preserve IndexedDB project origin
+    function tryListen(portToTry) {
+      server = app.listen(portToTry, '127.0.0.1', () => {
+        const port = server.address().port;
+        console.log(`BrickCode server running on http://127.0.0.1:${port}`);
+        resolve(port);
+      });
 
-    server.on('error', reject);
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.warn(`Port ${portToTry} in use, trying next port...`);
+          tryListen(portToTry + 1);
+        } else {
+          reject(err);
+        }
+      });
+    }
+
+    tryListen(preferredPort);
   });
 }
 
@@ -83,4 +96,4 @@ function stopServer() {
   }
 }
 
-module.exports = { startServer, stopServer };
+module.exports = { startServer, stopServer, FIXED_PORT };

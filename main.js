@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { startServer, stopServer } = require('./src/server');
+const { startServer, stopServer, FIXED_PORT } = require('./src/server');
 const { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun, installBundledSite } = require('./src/updater');
 const logger = require('./src/logger');
 const { getAvailablePorts, sendPlayTone, queryBattery } = require('./src/ev3-comm');
@@ -297,9 +297,85 @@ function sendToSplash(channel, data) {
   }
 }
 
+function migrateLegacyProjects(userDataDir, targetPort = FIXED_PORT) {
+  try {
+    const idbDir = path.join(userDataDir, 'IndexedDB');
+    if (!fs.existsSync(idbDir)) return;
+
+    const targetBase = `http_localhost_${targetPort}.indexeddb.leveldb`;
+    const targetPath = path.join(idbDir, targetBase);
+    const targetBlob = path.join(idbDir, `http_localhost_${targetPort}.indexeddb.blob`);
+
+    let targetSize = 0;
+    if (fs.existsSync(targetPath)) {
+      const files = fs.readdirSync(targetPath);
+      for (const f of files) {
+        try { targetSize += fs.statSync(path.join(targetPath, f)).size; } catch (e) {}
+      }
+    }
+
+    // If target already has projects (e.g. > 100KB), don't overwrite
+    if (targetSize > 100000) {
+      logger.info('APP', `База данных проектов на порту ${targetPort} уже содержит данные (${targetSize} байт)`);
+      return;
+    }
+
+    // Find candidate legacy databases from previous runs with random ports
+    const entries = fs.readdirSync(idbDir);
+    const legacyCandidates = [];
+
+    for (const entry of entries) {
+      if (entry.startsWith('http_localhost_') && entry.endsWith('.indexeddb.leveldb') && entry !== targetBase) {
+        const fullEntry = path.join(idbDir, entry);
+        let totalSize = 0;
+        try {
+          const files = fs.readdirSync(fullEntry);
+          for (const f of files) {
+            totalSize += fs.statSync(path.join(fullEntry, f)).size;
+          }
+        } catch (e) {}
+
+        const stat = fs.statSync(fullEntry);
+        legacyCandidates.push({
+          dirName: entry,
+          path: fullEntry,
+          size: totalSize,
+          mtime: stat.mtimeMs,
+          port: entry.replace('http_localhost_', '').replace('.indexeddb.leveldb', '')
+        });
+      }
+    }
+
+    if (legacyCandidates.length === 0) return;
+
+    // Pick candidate with largest size (most project data)
+    legacyCandidates.sort((a, b) => b.size - a.size || b.mtime - a.mtime);
+    const best = legacyCandidates[0];
+
+    // Only migrate if best has meaningful project data (> 40KB) and is larger than current target
+    if (best.size > 40000 && best.size > targetSize) {
+      logger.info('APP', `Миграция сохраненных проектов из старого сеанса (порт ${best.port}, ${best.size} байт) в постоянный порт ${targetPort}...`);
+      
+      fs.cpSync(best.path, targetPath, { recursive: true, force: true });
+
+      const bestBlob = path.join(idbDir, `http_localhost_${best.port}.indexeddb.blob`);
+      if (fs.existsSync(bestBlob)) {
+        fs.cpSync(bestBlob, targetBlob, { recursive: true, force: true });
+      }
+
+      logger.info('APP', `Миграция проектов успешно завершена!`);
+    }
+  } catch (err) {
+    logger.warn('APP', `Предупреждение при миграции проектов: ${err.message}`);
+  }
+}
+
 async function launch() {
   logger.init(app.getPath('userData'));
   logger.info('APP', `Запуск BrickCode App (v${app.getVersion()})`);
+
+  // Migrate saved projects from previous random-port sessions to our fixed port
+  migrateLegacyProjects(app.getPath('userData'), FIXED_PORT);
 
   createSplashWindow();
 
@@ -345,7 +421,7 @@ async function launch() {
 
     // 3. Start local HTTP server
     sendToSplash('status', 'Запуск локального сервера...');
-    serverPort = await startServer();
+    serverPort = await startServer(FIXED_PORT);
     logger.server(`Локальный сервер запущен на порту http://127.0.0.1:${serverPort}`);
 
     // Short delay for server readiness
@@ -361,7 +437,21 @@ async function launch() {
   }
 }
 
-app.whenReady().then(launch);
+// Ensure single instance to prevent port conflicts and project desync
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(launch);
+}
 
 app.on('window-all-closed', () => {
   logger.info('APP', 'Все окна закрыты, завершение работы');
