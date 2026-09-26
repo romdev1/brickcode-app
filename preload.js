@@ -1,14 +1,26 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('brickcode', {
+const api = {
   onStatus: (callback) => ipcRenderer.on('status', (_, msg) => callback(msg)),
   onProgress: (callback) => ipcRenderer.on('progress', (_, val) => callback(val)),
-  openLogs: () => ipcRenderer.send('open-logs-window')
-});
+  openLogs: () => {
+    ipcRenderer.send('open-logs-window');
+  },
+  openExternal: (url) => {
+    ipcRenderer.send('open-external', url);
+  }
+};
 
-// DOM Injection for Settings menu & Keyboard Shortcut
+// Expose to window
+try {
+  contextBridge.exposeInMainWorld('brickcode', api);
+} catch (e) {
+  window.brickcode = api;
+}
+
+// Global window event listeners and keyboard shortcut
 window.addEventListener('DOMContentLoaded', () => {
-  // Global shortcut: Ctrl+Shift+L or Alt+L opens logs window
+  // Global shortcut: Ctrl+Shift+L or Alt+L
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') ||
         (e.altKey && e.key.toLowerCase() === 'l')) {
@@ -17,36 +29,12 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Inject "Логи" into Settings dropdown if not already rendered by React
-  function injectLogsItem() {
-    // Look for active dropdown menus
-    const menus = document.querySelectorAll('.ui.dropdown.active .menu, .ui.popup .menu, #settings-menuitem + .menu, .settings-menuitem .menu');
-    menus.forEach(menu => {
-      if (!menu.querySelector('#injected-logs-item')) {
-        const item = document.createElement('div');
-        item.id = 'injected-logs-item';
-        item.role = 'menuitem';
-        item.className = 'item base-menuitem';
-        item.style.cursor = 'pointer';
-        item.innerHTML = `
-          <i class="icon terminal" style="margin-right: 0.75em;"></i>
-          <span>Журнал логов</span>
-        `;
-        item.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          ipcRenderer.send('open-logs-window');
-        });
-        menu.appendChild(item);
-      }
-    });
-  }
-
-  const observer = new MutationObserver(() => {
-    injectLogsItem();
+  // Custom DOM event fallback
+  window.addEventListener('open-logs-request', () => {
+    ipcRenderer.send('open-logs-window');
   });
-  observer.observe(document.body, { childList: true, subtree: true });
 
-  document.addEventListener('click', () => {
-    setTimeout(injectLogsItem, 60);
+  window.addEventListener('open-external-request', (e) => {
+    if (e.detail) ipcRenderer.send('open-external', e.detail);
   });
 });

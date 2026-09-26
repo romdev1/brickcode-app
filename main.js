@@ -166,6 +166,12 @@ ipcMain.on('open-logs-folder', () => {
   }
 });
 
+ipcMain.on('open-external', (event, url) => {
+  if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
+    shell.openExternal(url);
+  }
+});
+
 function createMainWindow(port) {
   mainWindow = new BrowserWindow({
     width: 1280,
