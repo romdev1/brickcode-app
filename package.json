@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win msi",
+    "build": "electron-builder --win",
     "postinstall": "electron-builder install-app-deps"
   },
   "author": "romdev1",
@@ -34,6 +34,10 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
           "target": "msi",
           "arch": ["x64"]
         }
@@ -43,9 +47,18 @@
       "sign": null
     },
     "forceCodeSigning": false,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "BrickCode App"
+    },
     "msi": {
       "oneClick": false,
-      "perMachine": true,
+      "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BrickCode App"
