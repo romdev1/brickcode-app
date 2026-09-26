@@ -1,6 +1,6 @@
 {
   "name": "brickcode-offline",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "BrickCode Offline — офлайн-версия редактора BrickCode для LEGO EV3",
   "main": "main.js",
   "scripts": {
@@ -9,6 +9,12 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "author": "romdev1",
+  "contributors": [
+    "romdev1",
+    "THEB0NNY (Dmitriy Antipov)",
+    "Petteri Aimonen",
+    "pxt-ev3-community"
+  ],
   "license": "MIT",
   "devDependencies": {
     "electron": "^32.0.0",

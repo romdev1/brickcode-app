@@ -50,13 +50,16 @@ npm run build
 
 ---
 
-## Автор проекта
+## Авторы и благодарности
 
-- **[romdev1](https://github.com/romdev1)** — разработка и адаптация офлайн-версии, Bluetooth Serial интеграция, окно логов и сборка установщика.
+- **[romdev1](https://github.com/romdev1)** — автор и разработчик офлайн-приложения **BrickCode Offline** (настольная оболочка Electron, Bluetooth Serial интеграция для EV3, кастомное окно журнала логов, локальный сервер и MSI-пакет).
+- **Dmitriy Antipov ([THEb0nny](https://github.com/THEb0nny))** — главный разработчик и мейнтейнер веб-платформы **[BrickCode](https://brickcode.org)** (репозиторий [pxt-ev3-community/pxt-ev3](https://github.com/pxt-ev3-community/pxt-ev3)), поддержка сенсоров NXT/EV3, симулятора и визуальных блоков.
+- **[Petteri Aimonen](https://github.com/PetteriAimonen)** — участник разработки и контрибьютор BrickCode.
+- **Сообщество [pxt-ev3-community](https://github.com/pxt-ev3-community)** — открытое сообщество энтузиастов и преподавателей, развивающее BrickCode для роботов LEGO MINDSTORMS EV3.
+- **Команда Microsoft MakeCode** — создатели оригинальной платформы программирования Microsoft MakeCode для LEGO MINDSTORMS EV3.
 
 ---
 
 ## Лицензия
 
 MIT License
-
