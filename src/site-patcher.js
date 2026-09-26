@@ -24,6 +24,13 @@ const LOADER_STYLES = `<style id="brickcode-ultimate-loader">
     overflow: hidden !important;
     opacity: 1 !important;
     visibility: visible !important;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  #loading.fade-out {
+    opacity: 0 !important;
+    transform: scale(1.05) !important;
+    pointer-events: none !important;
   }
 
   .loader-ambient {
@@ -454,30 +461,88 @@ const LOADER_HTML = `<div id='loading' class="ui active dimmer brickcode-super-d
 
             <div class="status-text">
                 <span class="status-dot"></span>
-                <span id="loadingStatusText">Инициализация среды выполнения...</span>
+                <span id="loadingStatusText">Инициализация среды BrickCode...</span>
             </div>
         </div>
         <script>
         (function() {
+            var minLoadingMs = 3200; // minimum duration to display loading animation smoothly
+            var startTime = Date.now();
+            var loadingEl = document.getElementById("loading");
+
+            // 1. Animated telemetry status messages
             var phrases = [
                 "Инициализация среды BrickCode...",
                 "Загрузка блоков и симулятора EV3...",
                 "Подготовка рабочего пространства...",
-                "Почти готово..."
+                "Готово!"
             ];
-            var idx = 0;
+            var phraseIdx = 0;
             var el = document.getElementById("loadingStatusText");
+            var phraseInterval = null;
             if (el) {
-                setInterval(function() {
-                    idx = (idx + 1) % phrases.length;
-                    el.style.opacity = '0';
+                phraseInterval = setInterval(function() {
+                    phraseIdx++;
+                    if (phraseIdx < phrases.length) {
+                        el.style.opacity = '0';
+                        setTimeout(function() {
+                            if (el) {
+                                el.textContent = phrases[phraseIdx];
+                                el.style.opacity = '1';
+                            }
+                        }, 200);
+                    }
+                }, 900);
+            }
+
+            // 2. Smooth delayed dismiss handler
+            var isDismissed = false;
+            function triggerSmoothDismiss() {
+                if (isDismissed) return;
+                isDismissed = true;
+                if (phraseInterval) clearInterval(phraseInterval);
+                if (el) {
+                    el.textContent = "Готово!";
+                    el.style.opacity = '1';
+                }
+                if (loadingEl) {
+                    loadingEl.classList.add("fade-out");
                     setTimeout(function() {
-                        if (el) {
-                            el.textContent = phrases[idx];
-                            el.style.opacity = '1';
-                        }
-                    }, 250);
-                }, 1800);
+                        try {
+                            if (origRemoveChild && loadingEl && loadingEl.parentNode) {
+                                origRemoveChild(loadingEl);
+                            } else if (loadingEl && loadingEl.parentNode) {
+                                loadingEl.parentNode.removeChild(loadingEl);
+                            }
+                        } catch (e) {}
+                    }, 500);
+                }
+            }
+
+            function requestDismiss() {
+                var elapsed = Date.now() - startTime;
+                var remaining = Math.max(0, minLoadingMs - elapsed);
+                setTimeout(triggerSmoothDismiss, remaining);
+            }
+
+            // Intercept remove on loadingEl directly
+            if (loadingEl) {
+                loadingEl.remove = function() {
+                    requestDismiss();
+                };
+            }
+
+            // Intercept removeChild on parent container (document.body)
+            var origRemoveChild = null;
+            if (loadingEl && loadingEl.parentNode) {
+                origRemoveChild = loadingEl.parentNode.removeChild.bind(loadingEl.parentNode);
+                loadingEl.parentNode.removeChild = function(child) {
+                    if (child === loadingEl || (child && child.id === "loading")) {
+                        requestDismiss();
+                        return child;
+                    }
+                    return origRemoveChild(child);
+                };
             }
         })();
         </script>
