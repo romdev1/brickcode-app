@@ -5,7 +5,7 @@ const path = require('path');
 const AdmZip = require('adm-zip');
 const { app } = require('electron');
 
-const SITE_URL = 'https://brickcode.org';
+const SITE_URL = 'https://beta.brickcode.org';
 const GITHUB_COMMITS_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/commits/master';
 const userDataPath = (app && typeof app.getPath === 'function')
   ? app.getPath('userData')

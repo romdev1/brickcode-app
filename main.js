@@ -34,10 +34,24 @@ function createMainWindow(port) {
     title: 'BrickCode Offline',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
-      contextIsolation: true,
+      contextIsolation: false,
       nodeIntegration: false
     }
   });
+
+  // Support Web Serial / Bluetooth communication with EV3
+  mainWindow.webContents.session.on('select-serial-port', (event, portList, webContents, callback) => {
+    event.preventDefault();
+    if (portList && portList.length > 0) {
+      const ev3 = portList.find(p => (p.displayName && p.displayName.includes('EV3')) || (p.portName && p.portName.includes('EV3')));
+      callback(ev3 ? ev3.portId : portList[0].portId);
+    } else {
+      callback('');
+    }
+  });
+
+  mainWindow.webContents.session.setPermissionCheckHandler(() => true);
+  mainWindow.webContents.session.setDevicePermissionHandler(() => true);
 
   mainWindow.loadURL(`http://localhost:${port}/`);
   mainWindow.setMenuBarVisibility(false);
