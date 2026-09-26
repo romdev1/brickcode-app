@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const { SITE_DIR, SITE_URL } = require('./updater');
+const { applyPatchesToDir } = require('./site-patcher');
 
 let server = null;
 
@@ -26,6 +27,7 @@ function fetchAndCache(urlPath, targetFile) {
 
 function startServer() {
   return new Promise((resolve, reject) => {
+    try { applyPatchesToDir(SITE_DIR); } catch (e) {}
     const app = express();
 
     // 1. Serve static files from the local BrickCode site directory

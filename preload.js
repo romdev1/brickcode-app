@@ -40,58 +40,66 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Dynamic DOM injection fallback for Settings menu
   function injectMenuItems() {
-    const menus = document.querySelectorAll('#settings-menuitem .menu, #settings-menuitem + .menu, .settings-menuitem .menu, .ui.dropdown.active .menu, .ui.popup .menu');
+    const menus = document.querySelectorAll(
+      '#settings-menuitem-menu, .common-menu-dropdown-pane, ul[id*="settings"], #settings-menuitem .menu, #settings-menuitem + .menu, .settings-menuitem .menu, .ui.dropdown.active .menu, .ui.popup .menu, [role="menu"]'
+    );
     menus.forEach(menu => {
       const text = menu.textContent || '';
-      const isSettings = text.includes('Сброс') || text.includes('Reset') || text.includes('Информация') || text.includes('About') || text.includes('Настройки') || menu.closest('#settings-menuitem, .settings-menuitem');
+      const isSettings = (menu.id && menu.id.includes('settings')) ||
+                         menu.closest('.settings-menuitem, #settings-menuitem') ||
+                         text.includes('Сброс') || text.includes('Reset') ||
+                         text.includes('Информация') || text.includes('About') ||
+                         text.includes('Настройки');
       if (!isSettings) return;
+
+      const isUl = menu.tagName.toLowerCase() === 'ul';
+
+      function createMenuItem(cls, iconClass, labelText, hint, onClick) {
+        const item = document.createElement(isUl ? 'li' : 'div');
+        item.className = isUl ? `common-menu-dropdown-item ${cls}` : `item base-menuitem ${cls}`;
+        item.setAttribute('role', 'menuitem');
+        item.tabIndex = -1;
+        item.style.cursor = 'pointer';
+        item.title = hint;
+        if (isUl) {
+          item.innerHTML = `<span class="common-button-flex"><i class="${iconClass}" aria-hidden="true"></i><span class="common-button-label">${labelText}</span></span>`;
+        } else {
+          item.innerHTML = `<i class="${iconClass}"></i><span class="text">${labelText}</span>`;
+        }
+        item.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          onClick();
+        });
+        return item;
+      }
+
+      // Add separator if ul and has other items
+      if (isUl && !menu.querySelector('.injected-separator') && !text.includes('Логи')) {
+        const sep = document.createElement('li');
+        sep.className = 'common-menu-dropdown-separator injected-separator';
+        sep.setAttribute('role', 'separator');
+        menu.appendChild(sep);
+      }
 
       // 1. Logs
       if (!menu.querySelector('.injected-logs-item') && !text.includes('Логи')) {
-        const item = document.createElement('div');
-        item.className = 'item base-menuitem injected-logs-item';
-        item.role = 'menuitem';
-        item.tabIndex = 0;
-        item.innerHTML = '<i class="icon terminal"></i><span class="text">Логи</span>';
-        item.title = 'Открыть журнал логов';
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', (ev) => {
-          ev.stopPropagation();
+        menu.appendChild(createMenuItem('injected-logs-item', 'icon terminal', 'Логи', 'Открыть журнал логов', () => {
           api.openLogs();
-        });
-        menu.appendChild(item);
+        }));
       }
 
       // 2. romdev1
       if (!menu.querySelector('.injected-author-romdev') && !text.includes('romdev1')) {
-        const item = document.createElement('div');
-        item.className = 'item base-menuitem injected-author-romdev';
-        item.role = 'menuitem';
-        item.tabIndex = 0;
-        item.innerHTML = '<i class="icon user"></i><span class="text">Приложение: romdev1</span>';
-        item.title = 'GitHub: https://github.com/romdev1';
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', (ev) => {
-          ev.stopPropagation();
+        menu.appendChild(createMenuItem('injected-author-romdev', 'icon user', 'Приложение: romdev1', 'GitHub: https://github.com/romdev1', () => {
           api.openExternal('https://github.com/romdev1');
-        });
-        menu.appendChild(item);
+        }));
       }
 
       // 3. THEB0NNY
       if (!menu.querySelector('.injected-author-bonny') && !text.includes('THEB0NNY')) {
-        const item = document.createElement('div');
-        item.className = 'item base-menuitem injected-author-bonny';
-        item.role = 'menuitem';
-        item.tabIndex = 0;
-        item.innerHTML = '<i class="icon heart"></i><span class="text">Создатель BrickCode: THEB0NNY</span>';
-        item.title = 'GitHub: https://github.com/THEb0nny';
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', (ev) => {
-          ev.stopPropagation();
+        menu.appendChild(createMenuItem('injected-author-bonny', 'icon heart', 'Создатель BrickCode: THEB0NNY', 'GitHub: https://github.com/THEb0nny', () => {
           api.openExternal('https://github.com/THEb0nny');
-        });
-        menu.appendChild(item);
+        }));
       }
     });
   }
@@ -99,7 +107,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const observer = new MutationObserver(injectMenuItems);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('click', () => {
-    setTimeout(injectMenuItems, 50);
-    setTimeout(injectMenuItems, 150);
+    setTimeout(injectMenuItems, 20);
+    setTimeout(injectMenuItems, 80);
+    setTimeout(injectMenuItems, 200);
+  });
+  document.addEventListener('mousedown', () => {
+    setTimeout(injectMenuItems, 20);
+    setTimeout(injectMenuItems, 80);
   });
 });

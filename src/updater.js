@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
 const { app } = require('electron');
+const { applyPatchesToDir } = require('./site-patcher');
 
 const SITE_URL = 'https://beta.brickcode.org';
 const GITHUB_COMMITS_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/commits/master';
@@ -18,6 +19,7 @@ const BUNDLED_ZIP = path.join(__dirname, '..', 'assets', 'bundled-site.zip');
 function ensureDirs() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(SITE_DIR)) fs.mkdirSync(SITE_DIR, { recursive: true });
+  try { applyPatchesToDir(SITE_DIR); } catch (e) {}
 }
 
 function isFirstRun() {
@@ -71,6 +73,8 @@ function installBundledSite(onProgress) {
           onProgress(Math.round((index / total) * 100));
         }
       });
+
+      applyPatchesToDir(SITE_DIR);
 
       saveLocalVersion({
         version: 'v1.5.9 (базовая)',
@@ -260,6 +264,7 @@ async function downloadUpdate(onProgress) {
     workers.push(worker());
   }
   await Promise.all(workers);
+  applyPatchesToDir(SITE_DIR);
 
   // Save updated version info
   try {
