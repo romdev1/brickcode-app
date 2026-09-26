@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Выбор устройства LEGO EV3</title>
+  <style>
+    :root {
+      --bg-base: #0d1117;
+      --bg-surface: #161b22;
+      --bg-card: rgba(22, 27, 34, 0.85);
+      --bg-card-hover: rgba(33, 38, 45, 0.95);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-highlight: #58AB41;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-green: #58AB41;
+      --accent-green-glow: rgba(88, 171, 65, 0.25);
+      --accent-blue: #58a6ff;
+      --accent-blue-glow: rgba(88, 166, 255, 0.2);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1c2333 0%, #0d1117 100%);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+    }
+
+    /* Custom Header */
+    .header {
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(13, 17, 23, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-app-region: drag;
+    }
+
+    .header-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #58AB41, #2e6920);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px var(--accent-green-glow);
+      flex-shrink: 0;
+    }
+
+    .header-icon svg {
+      width: 26px;
+      height: 26px;
+      fill: #ffffff;
+    }
+
+    .header-text {
+      flex: 1;
+    }
+
+    .header-text h2 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .close-btn {
+      -webkit-app-region: no-drag;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Content Area */
+    .content {
+      flex: 1;
+      padding: 16px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .content::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    /* Port Card */
+    .port-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .port-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .port-card.selected {
+      border-color: var(--border-highlight);
+      background: rgba(88, 171, 65, 0.08);
+      box-shadow: 0 0 0 1px var(--border-highlight), 0 4px 16px var(--accent-green-glow);
+    }
+
+    .port-card.is-ev3 {
+      border-left: 4px solid var(--accent-green);
+    }
+
+    .port-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .port-card.is-ev3 .port-icon {
+      background: rgba(88, 171, 65, 0.15);
+      color: var(--accent-green);
+    }
+
+    .port-card.selected .port-icon {
+      background: var(--accent-green);
+      color: #fff;
+    }
+
+    .port-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .port-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .port-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .port-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-ev3 {
+      background: rgba(88, 171, 65, 0.2);
+      color: #7dd35e;
+      border: 1px solid rgba(88, 171, 65, 0.4);
+    }
+
+    .badge-bluetooth {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+
+    .badge-com {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .port-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .radio-circle {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .port-card.selected .radio-circle {
+      border-color: var(--accent-green);
+    }
+
+    .port-card.selected .radio-circle::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin: auto;
+    }
+
+    .empty-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .empty-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .empty-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 380px;
+    }
+
+    .help-box {
+      margin-top: 10px;
+      background: rgba(88, 166, 255, 0.08);
+      border: 1px solid rgba(88, 166, 255, 0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #9ac7ff;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+      background: rgba(13, 17, 23, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #58AB41, #469131);
+      color: #fff;
+      box-shadow: 0 2px 10px var(--accent-green-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #64bd4b, #51a339);
+      box-shadow: 0 4px 16px var(--accent-green-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-icon">
+      <!-- Bluetooth EV3 Icon -->
+      <svg viewBox="0 0 24 24">
+        <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h2>Подключение к LEGO EV3</h2>
+      <p>Выберите последовательный COM-порт для передачи программы по Bluetooth</p>
+    </div>
+    <button class="close-btn" id="closeBtn" title="Закрыть (Esc)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="content" id="portListContainer">
+    <div class="section-title">Доступные порты</div>
+    <div id="portsList"></div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="empty-title">COM-порты не обнаружены</div>
+      <div class="empty-desc">
+        Убедитесь, что модуль EV3 включен, Bluetooth активен и модуль сопряжён с этим компьютером.
+      </div>
+      <div class="help-box">
+        <strong>💡 Как подключить EV3 по Bluetooth:</strong><br>
+        1. На модуле EV3: <em>Settings → Bluetooth</em> (включите Bluetooth и Visibility).<br>
+        2. В Windows: <em>Параметры → Bluetooth и устройства → Добавить устройство</em>.<br>
+        3. Выберите ваш EV3 и подтвердите код <strong>1234</strong> на кирпиче и в Windows.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="btn btn-secondary" id="refreshBtn" title="Обновить список портов">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      Обновить
+    </button>
+    <div class="footer-actions">
+      <button class="btn btn-secondary" id="cancelBtn">Отмена</button>
+      <button class="btn btn-primary" id="connectBtn" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Подключить
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let selectedPortId = null;
+    let ports = [];
+
+    const portsListEl = document.getElementById('portsList');
+    const emptyStateEl = document.getElementById('emptyState');
+    const connectBtn = document.getElementById('connectBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    function isEv3(port) {
+      const name = (port.displayName || port.portName || '').toLowerCase();
+      const desc = (port.description || '').toLowerCase();
+      const instId = (port.deviceInstanceId || '').toLowerCase();
+      const vid = (port.vendorId || '').toLowerCase();
+
+      if (name.includes('ev3') || desc.includes('ev3')) {
+        return { isEv3: true, label: 'LEGO EV3', badgeClass: 'badge-ev3', priority: 1 };
+      }
+      if (vid === '0694' || vid.includes('0694')) {
+        return { isEv3: true, label: 'LEGO EV3', badgeClass: 'badge-ev3', priority: 1 };
+      }
+      if (name.includes('bluetooth') || desc.includes('bluetooth') ||
+          name.includes('standard serial over bluetooth') ||
+          name.includes('последовательный порт по соединению bluetooth') ||
+          instId.includes('bthenum')) {
+        return { isEv3: true, label: 'Bluetooth EV3', badgeClass: 'badge-bluetooth', priority: 2 };
+      }
+
+      return { isEv3: false, label: 'COM-порт', badgeClass: 'badge-com', priority: 3 };
+    }
+
+    function renderPorts(portList) {
+      ports = portList || [];
+      portsListEl.innerHTML = '';
+
+      if (ports.length === 0) {
+        emptyStateEl.style.display = 'flex';
+        connectBtn.disabled = true;
+        return;
+      }
+
+      emptyStateEl.style.display = 'none';
+
+      // Sort: EV3 & Bluetooth ports first
+      ports.sort((a, b) => {
+        const aInfo = isEv3(a);
+        const bInfo = isEv3(b);
+        return aInfo.priority - bInfo.priority;
+      });
+
+      // Default select the first EV3 port if available
+      if (!selectedPortId || !ports.some(p => p.portId === selectedPortId)) {
+        selectedPortId = ports[0].portId;
+      }
+
+      ports.forEach((port) => {
+        const ev3Info = isEv3(port);
+        const card = document.createElement('div');
+        card.className = `port-card ${ev3Info.isEv3 ? 'is-ev3' : ''} ${port.portId === selectedPortId ? 'selected' : ''}`;
+        card.dataset.portId = port.portId;
+
+        const displayName = port.displayName || port.portName || 'Последовательный порт';
+        const portName = port.portName || '';
+        const description = port.description || (ev3Info.isEv3 ? 'Устройство LEGO MINDSTORMS EV3' : 'Стандартный последовательный порт');
+
+        card.innerHTML = `
+          <div class="port-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              ${ev3Info.isEv3 ?
+                '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/>' :
+                '<path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95a2.2 2.2 0 0 0 4.4 0c0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z"/>'
+              }
+            </svg>
+          </div>
+          <div class="port-info">
+            <div class="port-name-row">
+              <span class="port-title">${portName || displayName}</span>
+              <span class="port-badge ${ev3Info.badgeClass}">${ev3Info.label}</span>
+            </div>
+            <div class="port-desc" title="${displayName}">${displayName}</div>
+          </div>
+          <div class="radio-circle"></div>
+        `;
+
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.port-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedPortId = port.portId;
+          connectBtn.disabled = false;
+        });
+
+        // Double click to connect immediately
+        card.addEventListener('dblclick', () => {
+          selectedPortId = port.portId;
+          submitSelection();
+        });
+
+        portsListEl.appendChild(card);
+      });
+
+      connectBtn.disabled = !selectedPortId;
+    }
+
+    function submitSelection() {
+      if (selectedPortId && window.serialPicker) {
+        window.serialPicker.selectPort(selectedPortId);
+      }
+    }
+
+    function cancelSelection() {
+      if (window.serialPicker) {
+        window.serialPicker.cancel();
+      }
+    }
+
+    connectBtn.addEventListener('click', submitSelection);
+    cancelBtn.addEventListener('click', cancelSelection);
+    closeBtn.addEventListener('click', cancelSelection);
+
+    refreshBtn.addEventListener('click', () => {
+      if (window.serialPicker) {
+        window.serialPicker.refreshPorts();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') cancelSelection();
+      if (e.key === 'Enter') submitSelection();
+    });
+
+    if (window.serialPicker) {
+      window.serialPicker.onPorts((list) => {
+        renderPorts(list);
+      });
+    }
+  </script>
+</body>
+</html>

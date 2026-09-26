@@ -5,6 +5,9 @@ const { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun, installBun
 
 let mainWindow;
 let splashWindow;
+let serialPickerWindow = null;
+let currentSerialCallback = null;
+let currentPortList = [];
 let serverPort;
 
 function createSplashWindow() {
@@ -24,6 +27,76 @@ function createSplashWindow() {
   splashWindow.loadFile(path.join(__dirname, 'src', 'splash.html'));
 }
 
+function openSerialPicker(portList, callback) {
+  currentSerialCallback = callback;
+  currentPortList = portList || [];
+
+  if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+    serialPickerWindow.webContents.send('ports-list', currentPortList);
+    serialPickerWindow.focus();
+    return;
+  }
+
+  serialPickerWindow = new BrowserWindow({
+    width: 560,
+    height: 500,
+    parent: mainWindow,
+    modal: true,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    webPreferences: {
+      preload: path.join(__dirname, 'src', 'serial-picker-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  serialPickerWindow.loadFile(path.join(__dirname, 'src', 'serial-picker.html'));
+
+  serialPickerWindow.once('ready-to-show', () => {
+    serialPickerWindow.show();
+    serialPickerWindow.webContents.send('ports-list', currentPortList);
+  });
+
+  serialPickerWindow.on('closed', () => {
+    serialPickerWindow = null;
+    if (currentSerialCallback) {
+      currentSerialCallback('');
+      currentSerialCallback = null;
+    }
+  });
+}
+
+// IPC handlers for Serial Picker
+ipcMain.on('serial-port-selected', (event, portId) => {
+  if (currentSerialCallback) {
+    currentSerialCallback(portId);
+    currentSerialCallback = null;
+  }
+  if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+    serialPickerWindow.close();
+  }
+});
+
+ipcMain.on('serial-port-cancelled', () => {
+  if (currentSerialCallback) {
+    currentSerialCallback('');
+    currentSerialCallback = null;
+  }
+  if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+    serialPickerWindow.close();
+  }
+});
+
+ipcMain.on('refresh-serial-ports', () => {
+  if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+    serialPickerWindow.webContents.send('ports-list', currentPortList);
+  }
+});
+
 function createMainWindow(port) {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -42,11 +115,22 @@ function createMainWindow(port) {
   // Support Web Serial / Bluetooth communication with EV3
   mainWindow.webContents.session.on('select-serial-port', (event, portList, webContents, callback) => {
     event.preventDefault();
-    if (portList && portList.length > 0) {
-      const ev3 = portList.find(p => (p.displayName && p.displayName.includes('EV3')) || (p.portName && p.portName.includes('EV3')));
-      callback(ev3 ? ev3.portId : portList[0].portId);
-    } else {
-      callback('');
+    openSerialPicker(portList, callback);
+  });
+
+  mainWindow.webContents.session.on('serial-port-added', (event, port) => {
+    if (!currentPortList.some(p => p.portId === port.portId)) {
+      currentPortList.push(port);
+    }
+    if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+      serialPickerWindow.webContents.send('ports-list', currentPortList);
+    }
+  });
+
+  mainWindow.webContents.session.on('serial-port-removed', (event, port) => {
+    currentPortList = currentPortList.filter(p => p.portId !== port.portId);
+    if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+      serialPickerWindow.webContents.send('ports-list', currentPortList);
     }
   });
 
@@ -66,6 +150,9 @@ function createMainWindow(port) {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    if (serialPickerWindow && !serialPickerWindow.isDestroyed()) {
+      serialPickerWindow.close();
+    }
   });
 }
 
@@ -91,9 +178,9 @@ async function launch() {
     }
 
     const localVersion = getLocalVersion();
-    sendToSplash('status', `Версия: ${localVersion}. Проверка обновлений на brickcode.org...`);
+    sendToSplash('status', `Версия: ${localVersion}. Проверка обновлений...`);
 
-    // 2. Check for updates on brickcode.org & GitHub commits
+    // 2. Check for updates on beta.brickcode.org & GitHub commits
     try {
       const updateInfo = await checkForUpdates();
       if (updateInfo.hasUpdate) {
