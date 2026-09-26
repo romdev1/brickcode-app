@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Журнал логов — BrickCode Offline</title>
+  <style>
+    :root {
+      --bg-base: #0d1117;
+      --bg-surface: #161b22;
+      --bg-toolbar: #1c2128;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-green: #58AB41;
+      --accent-blue: #58a6ff;
+      --accent-yellow: #d29922;
+      --accent-red: #f85149;
+      --accent-purple: #bc8cff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      padding: 14px 20px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      -webkit-app-region: drag;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(88, 171, 65, 0.15);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .log-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      padding: 10px 20px;
+      background: var(--bg-toolbar);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 3px;
+      border-radius: 8px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .search-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: 220px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      -webkit-app-region: no-drag;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-danger:hover {
+      background: rgba(248, 81, 73, 0.2);
+      border-color: rgba(248, 81, 73, 0.4);
+      color: var(--accent-red);
+    }
+
+    .autoscroll-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Logs Container */
+    .logs-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-family: 'Consolas', 'Cascadia Code', 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      background: #090d13;
+    }
+
+    .logs-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .logs-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .log-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      word-break: break-word;
+      transition: background 0.1s;
+    }
+
+    .log-line:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .log-time {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      font-size: 11.5px;
+    }
+
+    .log-badge {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      text-align: center;
+      min-width: 52px;
+    }
+
+    .badge-info { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+    .badge-warn { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+    .badge-error { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+    .badge-debug { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
+
+    .log-category {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-purple);
+      flex-shrink: 0;
+      min-width: 65px;
+    }
+
+    .cat-serial { color: #e3b341; }
+    .cat-server { color: #58ab41; }
+    .cat-updater { color: #58a6ff; }
+    .cat-app { color: #bc8cff; }
+
+    .log-msg {
+      flex: 1;
+      color: var(--text-main);
+      white-space: pre-wrap;
+    }
+
+    .log-details {
+      margin-top: 4px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      color: #9ac7ff;
+      white-space: pre-wrap;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(22, 27, 34, 0.95);
+      border: 1px solid var(--accent-green);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+        Журнал работы и логи
+      </div>
+      <div class="live-badge">
+        <span class="live-dot"></span> LIVE
+      </div>
+      <div class="log-count" id="logCount">0 записей</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="openLogFileBtn" title="Открыть файл журнала в блокноте">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        Файл логов
+      </button>
+      <button class="btn" id="openFolderBtn" title="Показать папку с логами в проводнике">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Папка
+      </button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="filter-tabs">
+      <button class="tab-btn active" data-filter="all">Все</button>
+      <button class="tab-btn" data-filter="serial">Bluetooth & COM</button>
+      <button class="tab-btn" data-filter="server">Сервер</button>
+      <button class="tab-btn" data-filter="updater">Обновления</button>
+      <button class="tab-btn" data-filter="error">Ошибки</button>
+    </div>
+
+    <input type="text" class="search-input" id="searchInput" placeholder="Поиск по логам...">
+
+    <div class="actions">
+      <label class="autoscroll-toggle">
+        <input type="checkbox" id="autoScrollCheck" checked>
+        Автопрокрутка
+      </label>
+      <button class="btn" id="copyBtn" title="Скопировать все логи">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Копировать
+      </button>
+      <button class="btn btn-danger" id="clearBtn" title="Очистить журнал">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Очистить
+      </button>
+    </div>
+  </div>
+
+  <div class="logs-container" id="logsContainer"></div>
+
+  <div class="toast" id="toast">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#58AB41" stroke-width="2">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toastMsg">Логи скопированы в буфер обмена</span>
+  </div>
+
+  <script>
+    let allLogs = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    const container = document.getElementById('logsContainer');
+    const countEl = document.getElementById('logCount');
+    const autoScrollCheck = document.getElementById('autoScrollCheck');
+    const searchInput = document.getElementById('searchInput');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function getCategoryClass(cat) {
+      switch (cat.toUpperCase()) {
+        case 'SERIAL': return 'cat-serial';
+        case 'SERVER': return 'cat-server';
+        case 'UPDATER': return 'cat-updater';
+        default: return 'cat-app';
+      }
+    }
+
+    function getLevelBadgeClass(level) {
+      switch (level.toUpperCase()) {
+        case 'ERROR': return 'badge-error';
+        case 'WARN': return 'badge-warn';
+        case 'DEBUG': return 'badge-debug';
+        default: return 'badge-info';
+      }
+    }
+
+    function createLogElement(entry) {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.dataset.id = entry.id;
+      line.dataset.category = entry.category;
+      line.dataset.level = entry.level;
+
+      line.innerHTML = `
+        <span class="log-time">${entry.time}</span>
+        <span class="log-badge ${getLevelBadgeClass(entry.level)}">${entry.level}</span>
+        <span class="log-category ${getCategoryClass(entry.category)}">[${entry.category}]</span>
+        <div class="log-msg">
+          ${escapeHtml(entry.message)}
+          ${entry.details ? `<div class="log-details">${escapeHtml(entry.details)}</div>` : ''}
+        </div>
+      `;
+      return line;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function matchesFilter(entry) {
+      if (currentFilter === 'error' && entry.level !== 'ERROR') return false;
+      if (currentFilter === 'serial' && entry.category !== 'SERIAL') return false;
+      if (currentFilter === 'server' && entry.category !== 'SERVER') return false;
+      if (currentFilter === 'updater' && entry.category !== 'UPDATER') return false;
+
+      if (searchQuery) {
+        const text = (entry.message + ' ' + (entry.details || '') + ' ' + entry.category).toLowerCase();
+        if (!text.includes(searchQuery)) return false;
+      }
+      return true;
+    }
+
+    function renderAll() {
+      container.innerHTML = '';
+      const visible = allLogs.filter(matchesFilter);
+      visible.forEach(entry => {
+        container.appendChild(createLogElement(entry));
+      });
+      countEl.textContent = `${visible.length} записей`;
+      if (autoScrollCheck.checked) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    function appendEntry(entry) {
+      allLogs.push(entry);
+      if (matchesFilter(entry)) {
+        container.appendChild(createLogElement(entry));
+        countEl.textContent = `${allLogs.filter(matchesFilter).length} записей`;
+        if (autoScrollCheck.checked) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+    }
+
+    // Tabs filter
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderAll();
+      });
+    });
+
+    // Search filter
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim().toLowerCase();
+      renderAll();
+    });
+
+    // Copy logs
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = allLogs
+        .filter(matchesFilter)
+        .map(e => `[${e.date} ${e.time}] [${e.level}] [${e.category}] ${e.message}${e.details ? '\n' + e.details : ''}`)
+        .join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Все отфильтрованные логи скопированы!');
+      });
+    });
+
+    // Clear logs
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      allLogs = [];
+      renderAll();
+      if (window.logsApi) window.logsApi.clearLogs();
+      showToast('Журнал логов очищен');
+    });
+
+    // Open file
+    document.getElementById('openLogFileBtn').addEventListener('click', () => {
+      if (window.logsApi) window.logsApi.openLogFile();
+    });
+
+    // Open folder
+    document.getElementById('openFolderBtn').addEventListener('click', () => {
+      if (window.logsApi) window.logsApi.openLogsFolder();
+    });
+
+    // IPC wiring
+    if (window.logsApi) {
+      window.logsApi.getInitialLogs().then(logs => {
+        allLogs = logs || [];
+        renderAll();
+      });
+
+      window.logsApi.onLogEntry(entry => {
+        appendEntry(entry);
+      });
+    }
+  </script>
+</body>
+</html>
