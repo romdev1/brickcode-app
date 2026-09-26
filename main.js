@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { startServer, stopServer } = require('./src/server');
-const { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun } = require('./src/updater');
+const { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun, installBundledSite } = require('./src/updater');
 
 let mainWindow;
 let splashWindow;
@@ -32,6 +32,7 @@ function createMainWindow(port) {
     minHeight: 600,
     show: false,
     title: 'BrickCode Offline',
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false
@@ -65,50 +66,43 @@ async function launch() {
 
   try {
     const firstRun = isFirstRun();
+
+    // 1. If first run, extract bundled site files so app is immediately usable offline
+    if (firstRun) {
+      sendToSplash('status', 'Первый запуск. Подготовка файлов редактора...');
+      await installBundledSite((progress) => {
+        sendToSplash('progress', progress);
+        sendToSplash('status', `Распаковка файлов: ${progress}%`);
+      });
+    }
+
     const localVersion = getLocalVersion();
+    sendToSplash('status', `Версия: ${localVersion}. Проверка обновлений на brickcode.org...`);
 
-    sendToSplash('status', firstRun
-      ? 'Первый запуск. Скачивание BrickCode...'
-      : `Текущая версия: ${localVersion}. Проверка обновлений...`);
-
-    // Check for updates
-    let needsDownload = firstRun;
+    // 2. Check for updates on brickcode.org & GitHub commits
     try {
       const updateInfo = await checkForUpdates();
       if (updateInfo.hasUpdate) {
-        sendToSplash('status', `Доступна новая версия: ${updateInfo.remoteVersion}`);
-        needsDownload = true;
-      } else if (!firstRun) {
-        sendToSplash('status', 'Версия актуальна');
+        sendToSplash('status', `Доступно обновление (${updateInfo.remoteVersion}). Загрузка файлов...`);
+        await downloadUpdate((progress) => {
+          sendToSplash('progress', progress);
+          sendToSplash('status', `Загрузка обновления: ${progress}%`);
+        });
+        sendToSplash('status', 'Файлы успешно обновлены!');
+      } else {
+        sendToSplash('status', 'У вас актуальная версия файлов.');
       }
     } catch (err) {
-      console.log('Update check failed:', err.message);
-      if (firstRun) {
-        sendToSplash('status', 'Нет интернета. Невозможно скачать BrickCode.');
-        dialog.showErrorBox('BrickCode Offline',
-          'Для первого запуска требуется подключение к интернету для загрузки редактора.');
-        app.quit();
-        return;
-      }
-      sendToSplash('status', 'Нет интернета. Используется локальная версия.');
+      console.log('Update check skipped (offline or network error):', err.message);
+      sendToSplash('status', 'Офлайн-режим. Запуск локальной версии...');
     }
 
-    // Download if needed
-    if (needsDownload) {
-      sendToSplash('status', 'Загрузка BrickCode...');
-      await downloadUpdate((progress) => {
-        sendToSplash('progress', progress);
-        sendToSplash('status', `Загрузка: ${progress}%`);
-      });
-      sendToSplash('status', 'Распаковка...');
-    }
-
-    // Start local server
+    // 3. Start local HTTP server
     sendToSplash('status', 'Запуск локального сервера...');
     serverPort = await startServer();
 
-    // Wait a bit for the server to be ready
-    await new Promise(r => setTimeout(r, 500));
+    // Short delay for server readiness
+    await new Promise(r => setTimeout(r, 400));
 
     sendToSplash('status', 'Загрузка редактора...');
     createMainWindow(serverPort);

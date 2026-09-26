@@ -5,209 +5,286 @@ const path = require('path');
 const AdmZip = require('adm-zip');
 const { app } = require('electron');
 
-const GITHUB_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/releases';
-const DATA_DIR = path.join(app.getPath('userData'), 'brickcode-data');
+const SITE_URL = 'https://brickcode.org';
+const GITHUB_COMMITS_API = 'https://api.github.com/repos/pxt-ev3-community/pxt-ev3/commits/master';
+const userDataPath = (app && typeof app.getPath === 'function')
+  ? app.getPath('userData')
+  : path.join(process.env.APPDATA || process.env.USERPROFILE || '.', 'brickcode-offline');
+const DATA_DIR = path.join(userDataPath, 'brickcode-data');
 const SITE_DIR = path.join(DATA_DIR, 'site');
 const VERSION_FILE = path.join(DATA_DIR, 'version.json');
-const DOWNLOAD_DIR = path.join(DATA_DIR, 'downloads');
+const BUNDLED_ZIP = path.join(__dirname, '..', 'assets', 'bundled-site.zip');
 
 function ensureDirs() {
-  for (const dir of [DATA_DIR, SITE_DIR, DOWNLOAD_DIR]) {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(SITE_DIR)) fs.mkdirSync(SITE_DIR, { recursive: true });
 }
 
 function isFirstRun() {
   ensureDirs();
-  return !fs.existsSync(VERSION_FILE) || !fs.existsSync(path.join(SITE_DIR, 'index.html'));
+  const indexHtml = path.join(SITE_DIR, 'index.html');
+  return !fs.existsSync(indexHtml);
 }
 
 function getLocalVersion() {
   try {
-    const data = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
-    return data.version || 'unknown';
-  } catch {
-    return 'none';
-  }
+    if (fs.existsSync(VERSION_FILE)) {
+      const data = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
+      return data.version || data.commit || 'локальная';
+    }
+  } catch {}
+  return '1.0.0';
 }
 
-function saveLocalVersion(version, tag) {
-  fs.writeFileSync(VERSION_FILE, JSON.stringify({ version, tag, updatedAt: new Date().toISOString() }));
+function saveLocalVersion(info) {
+  ensureDirs();
+  fs.writeFileSync(VERSION_FILE, JSON.stringify({
+    ...info,
+    updatedAt: new Date().toISOString()
+  }, null, 2));
 }
 
-function httpsGet(url) {
+function installBundledSite(onProgress) {
   return new Promise((resolve, reject) => {
-    const options = {
-      headers: { 'User-Agent': 'BrickCode-Offline/1.0' }
-    };
-    https.get(url, options, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        httpsGet(res.headers.location).then(resolve).catch(reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-      const chunks = [];
-      res.on('data', chunk => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', reject);
-    }).on('error', reject);
+    ensureDirs();
+    if (!fs.existsSync(BUNDLED_ZIP)) {
+      // If bundled zip doesn't exist, we'll download directly
+      resolve(false);
+      return;
+    }
+
+    try {
+      const zip = new AdmZip(BUNDLED_ZIP);
+      const entries = zip.getEntries();
+      const total = entries.length;
+
+      entries.forEach((entry, index) => {
+        const fullPath = path.join(SITE_DIR, entry.entryName);
+        if (entry.isDirectory) {
+          if (!fs.existsSync(fullPath)) fs.mkdirSync(fullPath, { recursive: true });
+        } else {
+          const dir = path.dirname(fullPath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(fullPath, entry.getData());
+        }
+        if (onProgress && index % 50 === 0) {
+          onProgress(Math.round((index / total) * 100));
+        }
+      });
+
+      saveLocalVersion({
+        version: 'v1.5.9 (базовая)',
+        source: 'bundled'
+      });
+
+      if (onProgress) onProgress(100);
+      resolve(true);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
-function httpsDownload(url, destPath, onProgress) {
+function httpsRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
-    const options = {
-      headers: { 'User-Agent': 'BrickCode-Offline/1.0' }
+    const parsed = new URL(url);
+    const reqOptions = {
+      hostname: parsed.hostname,
+      port: parsed.port || 443,
+      path: parsed.pathname + parsed.search,
+      method: options.method || 'GET',
+      headers: {
+        'User-Agent': 'BrickCode-Offline/1.0',
+        ...(options.headers || {})
+      },
+      timeout: 10000
     };
 
-    function doRequest(reqUrl) {
-      const proto = reqUrl.startsWith('https') ? https : http;
-      proto.get(reqUrl, options, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          doRequest(res.headers.location);
-          return;
+    const req = https.request(reqOptions, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        let redirectUrl = res.headers.location;
+        if (redirectUrl.startsWith('/')) {
+          redirectUrl = `${parsed.protocol}//${parsed.host}${redirectUrl}`;
         }
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode}`));
-          return;
-        }
-        const totalSize = parseInt(res.headers['content-length'] || '0', 10);
-        let downloaded = 0;
-        const file = fs.createWriteStream(destPath);
+        httpsRequest(redirectUrl, options).then(resolve).catch(reject);
+        return;
+      }
 
-        res.on('data', (chunk) => {
-          downloaded += chunk.length;
-          file.write(chunk);
-          if (totalSize > 0 && onProgress) {
-            onProgress(Math.round((downloaded / totalSize) * 100));
-          }
-        });
+      if (options.method === 'HEAD') {
+        resolve({ statusCode: res.statusCode, headers: res.headers });
+        return;
+      }
 
-        res.on('end', () => {
-          file.end();
-          file.on('finish', resolve);
-        });
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => resolve({
+        statusCode: res.statusCode,
+        headers: res.headers,
+        body: Buffer.concat(chunks)
+      }));
+      res.on('error', reject);
+    });
 
-        res.on('error', (err) => {
-          file.close();
-          reject(err);
-        });
-      }).on('error', reject);
-    }
-
-    doRequest(url);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Connection timeout'));
+    });
+    req.on('error', reject);
+    req.end();
   });
 }
 
 async function checkForUpdates() {
-  const data = await httpsGet(GITHUB_API);
-  const releases = JSON.parse(data.toString());
-
-  // Find the latest release with a self-hostable zip asset
-  let bestRelease = null;
-  let bestAsset = null;
-
-  for (const release of releases) {
-    if (release.draft) continue;
-    const asset = (release.assets || []).find(a => a.name.includes('self-hostable') && a.name.endsWith('.zip'));
-    if (asset) {
-      bestRelease = release;
-      bestAsset = asset;
-      break; // releases are sorted newest first
+  let localData = {};
+  try {
+    if (fs.existsSync(VERSION_FILE)) {
+      localData = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
     }
+  } catch {}
+
+  // 1. Check site headers (ETag / Last-Modified from brickcode.org)
+  const headRes = await httpsRequest(`${SITE_URL}/index.html`, { method: 'HEAD' });
+  const remoteEtag = headRes.headers.etag || '';
+  const remoteLastModified = headRes.headers['last-modified'] || '';
+
+  // 2. Check latest commit from GitHub master
+  let commitInfo = null;
+  try {
+    const commitRes = await httpsRequest(GITHUB_COMMITS_API);
+    if (commitRes.statusCode === 200) {
+      const commitJson = JSON.parse(commitRes.body.toString());
+      commitInfo = {
+        sha: commitJson.sha,
+        shortSha: commitJson.sha.slice(0, 7),
+        date: commitJson.commit.author.date
+      };
+    }
+  } catch (e) {
+    // If GitHub API rate limits or fails, fallback to ETag comparison
   }
 
-  // If no release has assets, try to use zipball of latest non-prerelease
-  if (!bestRelease) {
-    for (const release of releases) {
-      if (!release.draft && !release.prerelease) {
-        bestRelease = release;
-        break;
-      }
-    }
-    if (!bestRelease && releases.length > 0) {
-      bestRelease = releases[0];
-    }
-  }
+  const remoteVersion = commitInfo
+    ? `${commitInfo.shortSha} (${commitInfo.date.slice(0, 10)})`
+    : (remoteLastModified || remoteEtag || 'новая версия');
 
-  if (!bestRelease) {
-    return { hasUpdate: false, remoteVersion: 'unknown' };
+  // Determine if update is available
+  let hasUpdate = false;
+  if (!localData.etag && !localData.commit) {
+    hasUpdate = true;
+  } else if (commitInfo && localData.commit && localData.commit !== commitInfo.sha) {
+    hasUpdate = true;
+  } else if (remoteEtag && localData.etag && localData.etag !== remoteEtag) {
+    hasUpdate = true;
+  } else if (remoteLastModified && localData.lastModified && localData.lastModified !== remoteLastModified) {
+    hasUpdate = true;
   }
-
-  const localVersion = getLocalVersion();
-  const remoteVersion = bestRelease.tag_name;
-  const hasUpdate = localVersion === 'none' || localVersion !== remoteVersion;
 
   return {
     hasUpdate,
     remoteVersion,
-    downloadUrl: bestAsset ? bestAsset.browser_download_url : bestRelease.zipball_url,
-    isZipball: !bestAsset,
-    tag: bestRelease.tag_name
+    remoteEtag,
+    remoteLastModified,
+    commit: commitInfo ? commitInfo.sha : null
   };
+}
+
+function downloadFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    httpsRequest(url).then(res => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      const dir = path.dirname(destPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(destPath, res.body);
+      resolve();
+    }).catch(reject);
+  });
 }
 
 async function downloadUpdate(onProgress) {
   ensureDirs();
 
-  const updateInfo = await checkForUpdates();
-  if (!updateInfo.downloadUrl) throw new Error('Не найден URL для загрузки');
+  // 1. Fetch release.manifest
+  const manifestRes = await httpsRequest(`${SITE_URL}/release.manifest`);
+  const manifestText = manifestRes.statusCode === 200 ? manifestRes.body.toString() : '';
 
-  const zipPath = path.join(DOWNLOAD_DIR, 'update.zip');
+  // 2. Parse file paths from manifest
+  const manifestFiles = manifestText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.startsWith('/') && !l.includes(' ') && !l.startsWith('//'));
 
-  // Download
-  await httpsDownload(updateInfo.downloadUrl, zipPath, onProgress);
+  // Core essential files that must always be updated
+  const coreFiles = [
+    '/index.html',
+    '/targetconfig.json',
+    '/target.js',
+    '/sim.html',
+    '/editor.js',
+    '/fieldeditors.js',
+    '/release.manifest'
+  ];
 
-  // Clear old site
-  if (fs.existsSync(SITE_DIR)) {
-    fs.rmSync(SITE_DIR, { recursive: true, force: true });
-    fs.mkdirSync(SITE_DIR, { recursive: true });
+  const allFiles = Array.from(new Set([...coreFiles, ...manifestFiles]));
+  const total = allFiles.length;
+  let completed = 0;
+
+  // Concurrency pool of 5 simultaneous downloads
+  const CONCURRENCY = 5;
+  let index = 0;
+
+  async function worker() {
+    while (index < allFiles.length) {
+      const file = allFiles[index++];
+      const cleanPath = file.startsWith('/') ? file.slice(1) : file;
+      const fileUrl = `${SITE_URL}/${cleanPath}`;
+      const destPath = path.join(SITE_DIR, cleanPath);
+
+      try {
+        await downloadFile(fileUrl, destPath);
+      } catch (err) {
+        console.warn(`Failed to update ${file}:`, err.message);
+      }
+
+      completed++;
+      if (onProgress) {
+        onProgress(Math.round((completed / total) * 100));
+      }
+    }
   }
 
-  // Extract
-  const zip = new AdmZip(zipPath);
-  const entries = zip.getEntries();
-
-  // Find the root directory inside zip (if any)
-  let prefix = '';
-  if (entries.length > 0) {
-    const firstEntry = entries[0].entryName;
-    if (firstEntry.endsWith('/')) {
-      prefix = firstEntry;
-    } else if (firstEntry.includes('/')) {
-      prefix = firstEntry.split('/')[0] + '/';
-    }
-    // Verify it's a common prefix
-    const allMatch = entries.every(e => e.entryName.startsWith(prefix));
-    if (!allMatch) prefix = '';
+  const workers = [];
+  for (let i = 0; i < CONCURRENCY; i++) {
+    workers.push(worker());
   }
+  await Promise.all(workers);
 
-  for (const entry of entries) {
-    let relativePath = entry.entryName;
-    if (prefix && relativePath.startsWith(prefix)) {
-      relativePath = relativePath.substring(prefix.length);
-    }
-    if (!relativePath) continue;
-
-    const fullPath = path.join(SITE_DIR, relativePath);
-
-    if (entry.isDirectory) {
-      fs.mkdirSync(fullPath, { recursive: true });
-    } else {
-      const dir = path.dirname(fullPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(fullPath, entry.getData());
-    }
+  // Save updated version info
+  try {
+    const updateInfo = await checkForUpdates();
+    saveLocalVersion({
+      version: updateInfo.remoteVersion,
+      commit: updateInfo.commit,
+      etag: updateInfo.remoteEtag,
+      lastModified: updateInfo.remoteLastModified,
+      source: 'brickcode.org'
+    });
+  } catch {
+    saveLocalVersion({
+      version: 'обновлено с brickcode.org',
+      source: 'brickcode.org'
+    });
   }
-
-  // Clean up download
-  try { fs.unlinkSync(zipPath); } catch {}
-
-  // Save version
-  saveLocalVersion(updateInfo.remoteVersion, updateInfo.tag);
 }
 
-module.exports = { checkForUpdates, downloadUpdate, getLocalVersion, isFirstRun, SITE_DIR };
+module.exports = {
+  checkForUpdates,
+  downloadUpdate,
+  getLocalVersion,
+  isFirstRun,
+  installBundledSite,
+  SITE_DIR,
+  SITE_URL
+};
